@@ -21,7 +21,6 @@
 #include <string.h>		/* memcpy */
 
 #include "checksum.h"
-#include "ethernet.h"
 #include "ipv4.h"
 #include "ipv6.h"
 #include "linkedlist.h"
@@ -35,7 +34,6 @@
  * Processing of incoming UDPv4 packets. Directly sends translated UDPv6
  * packets.
  *
- * @param	eth4		Ethernet header
  * @param	ip4		IPv4 header
  * @param	payload		UDPv4 data
  * @param	payload_size	Size of the data payload
@@ -43,7 +41,7 @@
  * @return	0 for success
  * @return	1 for failure
  */
-int udp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
+int udp_ipv4(struct s_ipv4 *ip4, char *payload,
 	     unsigned short payload_size)
 {
 	struct s_udp	*udp;
@@ -51,7 +49,6 @@ int udp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 	unsigned short	 orig_checksum;
 	char		 packet[PACKET_BUFFER];
 
-	struct s_ethernet *eth6;
 	struct s_ipv6     *ip6;
 
 	/* parse UDP header */
@@ -91,19 +88,13 @@ int udp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 	linkedlist_move2end(timeout_udp, connection->llnode);
 
 	/* translated packet */
-	eth6 = (struct s_ethernet *) packet;
-	ip6 = (struct s_ipv6 *) (packet + sizeof(struct s_ethernet));
-
-	/* build ethernet header */
-	eth6->dest		= connection->mac;
-	eth6->src		= mac;
-	eth6->type		= htons(ETHERTYPE_IPV6);
+	ip6 = (struct s_ipv6*)(packet);
 
 	/* build IPv6 packet */
-	ip6->ver		= 0x60 | (ip4->tos >> 4);
+	ip6->ver            = 0x60 | (ip4->tos >> 4);
 	ip6->traffic_class	= ip4->tos << 4;
 	ip6->flow_label		= 0x0;
-	ip6->len		= htons(payload_size);
+	ip6->len	    	= htons(payload_size);
 	ip6->next_header	= IPPROTO_UDP;
 	ip6->hop_limit		= ip4->ttl;
 	ipv4_to_ipv6(&ip4->ip_src, &ip6->ip_src);
@@ -127,11 +118,11 @@ int udp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 	}
 
 	/* copy the payload data (with new checksum) */
-	memcpy(packet + sizeof(struct s_ethernet) + sizeof(struct s_ipv6),
+	memcpy(packet + sizeof(struct s_ipv6),
 	       payload, payload_size);
 
 	/* send translated packet */
-	transmit_raw(packet, sizeof(struct s_ethernet) + sizeof(struct s_ipv6) +
+	transmit_raw(packet, sizeof(struct s_ipv6) +
 		     payload_size);
 
 	return 0;
@@ -141,7 +132,6 @@ int udp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
  * Processing of outgoing UDPv6 packets. Directly sends translated UDPv4
  * packets.
  *
- * @param	eth6		Ethernet header
  * @param	ip6		IPv6 header
  * @param	payload		UDPv6 data
  * @param	payload_size	Size of the data payload
@@ -149,7 +139,7 @@ int udp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
  * @return	0 for success
  * @return	1 for failure
  */
-int udp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload,
+int udp_ipv6(struct s_ipv6 *ip6, char *payload,
 	     unsigned short payload_size)
 {
 	struct s_udp	*udp;
@@ -181,8 +171,10 @@ int udp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload,
 		return 1;
 	}
 
+	struct s_mac_addr eth_src;
 	/* find connection in NAT */
-	connection = nat_out(nat6_udp, nat4_udp, eth6->src,
+	//connection = nat_out(nat6_udp, nat4_udp, eth6->src,
+	connection = nat_out(nat6_udp, nat4_udp, eth_src,
 			     ip6->ip_src, ip6->ip_dest,
 			     udp->port_src, udp->port_dest, 1);
 
@@ -196,7 +188,6 @@ int udp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload,
 	} else {
 		linkedlist_move2end(timeout_udp, connection->llnode);
 	}
-
 
 	/* translated packet */
 	ip4 = (struct s_ipv4 *) packet;

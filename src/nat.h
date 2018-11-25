@@ -19,18 +19,20 @@
 #ifndef NAT_H
 #define NAT_H
 
-#include "ethernet.h"		/* s_mac_addr */
 #include "ipv4.h"		/* s_ipv4_addr */
 #include "ipv6.h"		/* s_ipv6_addr */
 #include "linkedlist.h"		/* linkedlist_h */
 #include "radixtree.h"		/* radixtree_t */
 
+// FIXME
+#include "wrapper.h"
+
 struct s_nat {
-	struct s_mac_addr	mac;
+    struct s_mac_addr       mac;
 	struct s_ipv6_addr	ipv6;
 	struct s_ipv4_addr	ipv4;
 	unsigned short		ipv6_port_src;
-	unsigned short		ipv4_port_src;
+    unsigned short      ipv4_port_src;
 	unsigned short		ipv4_port_dst;
 	unsigned char		state;
 	linkedlist_node_t	*llnode;

@@ -29,14 +29,13 @@
 /**
  * Processing of IPv6 packets.
  *
- * @param	eth	Ethernet header
  * @param	packet	Packet data
  * @param	length	Packet data length
  *
  * @return	0 for success
  * @return	1 for failure
  */
-int ipv6(struct s_ethernet *eth, char *packet, unsigned short length)
+int ipv6(char *packet, unsigned short length)
 {
 	struct s_ipv6	*ip;
 	char		*payload;
@@ -44,6 +43,10 @@ int ipv6(struct s_ethernet *eth, char *packet, unsigned short length)
 	/* load data into structures */
 	ip = (struct s_ipv6 *) packet;
 	payload = packet + sizeof(struct s_ipv6);
+
+    IP6_TXT(from, &ip->ip_src);
+    IP6_TXT(to, &ip->ip_dest);
+    log_debug("IPv6 recv: %s > %s", from, to);
 
 	/* sanity check; len is already covered */
 	if (ntohs(ip->len) + sizeof(struct s_ipv6) != length) {
@@ -54,7 +57,8 @@ int ipv6(struct s_ethernet *eth, char *packet, unsigned short length)
 	/* test if this packet belongs to us */
 	if (memcmp(&wrapsix_ipv6_prefix, &ip->ip_dest, 12) != 0 &&
 	    memcmp(&ndp_multicast_addr,  &ip->ip_dest, 13) != 0) {
-		return 1;
+		log_debug("PACKET NOT FOR US?");
+        return 1;
 	}
 
 	/* check and decrease hop limit */
@@ -62,9 +66,10 @@ int ipv6(struct s_ethernet *eth, char *packet, unsigned short length)
 		/* deny this error for error ICMP messages */
 		if (ip->next_header != IPPROTO_ICMPV6 || payload[0] & 0x80) {
 			/* code 0 = hl exceeded in transmit */
-			icmp6_error(eth->src, ip->ip_src, ICMPV6_TIME_EXCEEDED,
-				    0, packet,
-				    htons(ip->len) + sizeof(struct s_ipv6));
+            //FIXME
+			//icmp6_error(eth->src, ip->ip_src, ICMPV6_TIME_EXCEEDED,
+		    //0, packet,
+		    //		    htons(ip->len) + sizeof(struct s_ipv6));
 		}
 		return 1;
 	} else {
@@ -75,13 +80,13 @@ int ipv6(struct s_ethernet *eth, char *packet, unsigned short length)
 	switch (ip->next_header) {
 		case IPPROTO_TCP:
 			log_debug("IPv6 Protocol: TCP");
-			return tcp_ipv6(eth, ip, payload, data_size);
+			return tcp_ipv6(ip, payload, data_size);
 		case IPPROTO_UDP:
 			log_debug("IPv6 Protocol: UDP");
-			return udp_ipv6(eth, ip, payload, data_size);
+			return udp_ipv6(ip, payload, data_size);
 		case IPPROTO_ICMPV6:
 			log_debug("IPv6 Protocol: ICMP");
-			return icmp_ipv6(eth, ip, payload, data_size);
+			return icmp_ipv6(ip, payload, data_size);
 		default:
 			log_debug("IPv6 Protocol: unknown [%d/0x%x]",
 				  ip->next_header, ip->next_header);

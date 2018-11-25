@@ -29,14 +29,13 @@
 /**
  * Processing of IPv4 packets.
  *
- * @param	eth	Ethernet header
  * @param	packet	Packet data
  * @param	length	Packet data length
  *
  * @return	0 for success
  * @return	1 for failure
  */
-int ipv4(struct s_ethernet *eth, char *packet, unsigned short length)
+int ipv4(char *packet, unsigned short length)
 {
 	struct s_ipv4	*ip;
 	char		*payload;
@@ -45,8 +44,15 @@ int ipv4(struct s_ethernet *eth, char *packet, unsigned short length)
 	/* load IP header */
 	ip = (struct s_ipv4 *) packet;
 
+    IP4_TXT(from, &ip->ip_src);
+    IP4_TXT(to, &ip->ip_dest);
+    log_debug("IPv4 recv: %s > %s", from, to);
+
 	/* test if this packet belongs to us */
 	if (memcmp(&wrapsix_ipv4_addr, &ip->ip_dest, 4) != 0) {
+        char ip_text[40];
+        inet_ntop(AF_INET, &ip->ip_dest, ip_text, sizeof(ip_text));
+	    log_debug("received foreign ipv4: %s", ip_text);
 		return 1;
 	}
 
@@ -82,13 +88,13 @@ int ipv4(struct s_ethernet *eth, char *packet, unsigned short length)
 	switch (ip->proto) {
 		case IPPROTO_TCP:
 			log_debug("IPv4 Protocol: TCP");
-			return tcp_ipv4(eth, ip, payload, data_size);
+			return tcp_ipv4(ip, payload, data_size);
 		case IPPROTO_UDP:
 			log_debug("IPv4 Protocol: UDP");
-			return udp_ipv4(eth, ip, payload, data_size);
+			return udp_ipv4(ip, payload, data_size);
 		case IPPROTO_ICMP:
 			log_debug("IPv4 Protocol: ICMP");
-			return icmp_ipv4(eth, ip, payload, data_size);
+			return icmp_ipv4(ip, payload, data_size);
 		default:
 			log_debug("IPv4 Protocol: unknown [%d/0x%x]",
 				  ip->proto, ip->proto);

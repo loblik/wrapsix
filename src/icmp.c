@@ -35,16 +35,16 @@
 int sub_icmp4_error(char *payload, unsigned short payload_size,
 		    char *packet, unsigned short *packet_len,
 		    struct s_icmp **icmp, struct s_nat **connection);
-int sub_icmp6_error(struct s_ethernet *eth6,
-		    char *payload, unsigned short payload_size,
-		    char *packet, unsigned short *packet_len,
-		    struct s_icmp **icmp, struct s_nat **connection);
+// FIXME
+//int sub_icmp6_error(struct s_ethernet *eth6,
+//		    char *payload, unsigned short payload_size,
+//		    char *packet, unsigned short *packet_len,
+//		    struct s_icmp **icmp, struct s_nat **connection);
 
 /**
  * Processing of incoming ICMPv4 packets. Directly sends translated ICMPv6
  * packets.
  *
- * @param	eth4		Ethernet header
  * @param	ip4		IPv4 header
  * @param	payload		ICMPv4 data
  * @param	payload_size	Size of the data payload
@@ -52,7 +52,7 @@ int sub_icmp6_error(struct s_ethernet *eth6,
  * @return	0 for success
  * @return	1 for failure
  */
-int icmp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
+int icmp_ipv4(struct s_ipv4 *ip4, char *payload,
 	      unsigned short payload_size)
 {
 	struct s_icmp	*icmp;
@@ -63,11 +63,9 @@ int icmp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 	struct s_nat	*connection;
 	unsigned short	 orig_checksum;
 	char		 packet[PACKET_BUFFER];
-	unsigned short	 new_len = sizeof(struct s_ethernet) +
-				   sizeof(struct s_ipv6);
+	unsigned short	 new_len = sizeof(struct s_ipv6);
 
 	struct s_icmp_echo *echo;
-	struct s_ethernet *eth6;
 	struct s_ipv6 *ip6;
 
 	/* for error messages */
@@ -103,6 +101,9 @@ int icmp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 			connection = nat_in(nat4_icmp, ip4->ip_src,
 					    0, echo->id);
 
+            IP6_TXT(to, &connection->ipv6);
+			log_debug("ICMPv4 reply NAT_IN: %s", to);
+
 			if (connection == NULL) {
 				log_debug("Incoming connection wasn't found in "
 					  "NAT");
@@ -127,7 +128,6 @@ int icmp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 				icmp = (struct s_icmp *) (packet + new_len);
 				new_len += mtu - sizeof(struct s_ipv6);
 			}
-
 			break;
 
 		case ICMPV4_DST_UNREACHABLE:
@@ -141,7 +141,6 @@ int icmp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 
 				eip4 = (struct s_ipv4 *) (icmp_data + 4);
 				eip6 = (struct s_ipv6 *) (packet +
-					sizeof(struct s_ethernet) +
 					sizeof(struct s_ipv6) +
 					sizeof(struct s_icmp) + 4);
 
@@ -312,20 +311,13 @@ int icmp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 			return 0;
 	}
 
-	eth6 = (struct s_ethernet *) packet;
-	ip6 = (struct s_ipv6 *) (packet + sizeof(struct s_ethernet));
-
-	/* build ethernet header */
-	eth6->dest		= connection->mac;
-	eth6->src		= mac;
-	eth6->type		= htons(ETHERTYPE_IPV6);
+	ip6 = (struct s_ipv6 *)packet;
 
 	/* build IPv6 packet */
-	ip6->ver		= 0x60 | (ip4->tos >> 4);
+	ip6->ver		    = 0x60 | (ip4->tos >> 4);
 	ip6->traffic_class	= ip4->tos << 4;
 	ip6->flow_label		= 0x0;
-	ip6->len		= htons(new_len - sizeof(struct s_ethernet) -
-					sizeof(struct s_ipv6));
+	ip6->len		    = htons(new_len - sizeof(struct s_ipv6));
 	ip6->next_header	= IPPROTO_ICMPV6;
 	ip6->hop_limit		= ip4->ttl;
 	ipv4_to_ipv6(&ip4->ip_src, &ip6->ip_src);
@@ -334,7 +326,6 @@ int icmp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 	/* compute ICMP checksum; this is already in new packet */
 	icmp->checksum = 0x0;
 	icmp->checksum = checksum_ipv6(ip6->ip_src, ip6->ip_dest, new_len -
-				       sizeof(struct s_ethernet) -
 				       sizeof(struct s_ipv6), IPPROTO_ICMPV6,
 				       (char *) icmp);
 
@@ -348,7 +339,6 @@ int icmp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
  * Processing of outgoing ICMPv6 packets. Directly sends translated ICMPv4
  * packets.
  *
- * @param	eth6		Ethernet header
  * @param	ip6		IPv6 header
  * @param	payload		ICMPv6 data
  * @param	payload_size	Size of the data payload
@@ -356,7 +346,7 @@ int icmp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
  * @return	0 for success
  * @return	1 for failure
  */
-int icmp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload,
+int icmp_ipv6(struct s_ipv6 *ip6, char *payload,
 	      unsigned short payload_size)
 {
 	struct s_icmp 	*icmp;
@@ -366,7 +356,7 @@ int icmp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload,
 	char	 	*icmp_data;
 	struct s_nat  	*connection;
 	unsigned short	 orig_checksum;
-	char		 packet[PACKET_BUFFER - sizeof(struct s_ethernet)];
+	char		 packet[PACKET_BUFFER];
 	unsigned short	 new_len = sizeof(struct s_ipv4);
 
 	struct s_icmp_echo *echo;
@@ -402,9 +392,15 @@ int icmp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload,
 
 			echo = (struct s_icmp_echo *) icmp_data;
 
-			connection = nat_out(nat6_icmp, nat4_icmp, eth6->src,
+		    struct s_mac_addr eth_src;
+			//connection = nat_out(nat6_icmp, nat4_icmp, eth6->src,
+			connection = nat_out(nat6_icmp, nat4_icmp, eth_src,
 					     ip6->ip_src, ip6->ip_dest,
 					     echo->id, 0, 1);
+
+            IP6_TXT(dst, &ip6->ip_dest);
+            IP6_TXT(src, &ip6->ip_src);
+			log_debug("ICMPv6 NAT_OUT: %s %s", src, dst);
 
 			if (connection == NULL) {
 				log_warn("Outgoing connection wasn't "
@@ -449,9 +445,10 @@ int icmp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload,
 				log_debug("Too short packet for NDP NS");
 				return 1;
 			}
-
-			return icmp_ndp(eth6, ip6,
-					(struct s_icmp_ndp_ns *) icmp_data);
+            log_error("this should not happen with TUN interface I guess");
+            return 1;
+			//return icmp_ndp(eth6, ip6,
+		    //			(struct s_icmp_ndp_ns *) icmp_data);
 
 		case ICMPV6_DST_UNREACHABLE:
 			/* translate type */
@@ -471,13 +468,15 @@ int icmp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload,
 				return 0;
 			}
 
+            log_error("Unhandled ICMPv6 destination unreachable");
+            // FIXME
 			/* translate body of the packet */
-			if (sub_icmp6_error(eth6, icmp_data + 4,
-			    payload_size - sizeof(struct s_icmp) - 4,
-			    packet, &new_len, &icmp, &connection)) {
-				/* something went wrong */
-				return 1;
-			}
+			//if (sub_icmp6_error(eth6, icmp_data + 4,
+			//    payload_size - sizeof(struct s_icmp) - 4,
+			//    packet, &new_len, &icmp, &connection)) {
+			//	/* something went wrong */
+			//	return 1;
+			//}
 
 			/* new packet is almost finished, yay! */
 
@@ -487,13 +486,15 @@ int icmp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload,
 			/* translate type; code doesn't change */
 			icmp->type = ICMPV4_TIME_EXCEEDED;
 
+            // FIXME
+            log_error("Unhandled ICMPv6 time exceeded");
 			/* translate body of the packet */
-			if (sub_icmp6_error(eth6, icmp_data + 4,
-			    payload_size - sizeof(struct s_icmp) - 4,
-			    packet, &new_len, &icmp, &connection)) {
-				/* something went wrong */
-				return 1;
-			}
+			//if (sub_icmp6_error(eth6, icmp_data + 4,
+			//    payload_size - sizeof(struct s_icmp) - 4,
+			//    packet, &new_len, &icmp, &connection)) {
+			//	/* something went wrong */
+			//	return 1;
+			//}
 
 			/* new packet is almost finished, yay! */
 
@@ -550,13 +551,14 @@ int icmp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload,
 				return 0;
 			}
 
-			/* translate body of the packet */
-			if (sub_icmp6_error(eth6, icmp_data + 4,
-			    payload_size - sizeof(struct s_icmp) - 4,
-			    packet, &new_len, &icmp, &connection)) {
-				/* something went wrong */
-				return 1;
-			}
+            log_error("Unhandled ICMPv6 param problem");
+			///* translate body of the packet */
+			//if (sub_icmp6_error(eth6, icmp_data + 4,
+			//    payload_size - sizeof(struct s_icmp) - 4,
+			//    packet, &new_len, &icmp, &connection)) {
+			//	/* something went wrong */
+			//	return 1;
+			//}
 
 			/* new packet is almost finished, yay! */
 
@@ -592,13 +594,14 @@ int icmp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload,
 				*icmp_extra_s = htons(ntohl(*icmp_extra) - 12);
 			}
 
+            log_error("Unhandled ICMPv6 too big");
 			/* translate body of the packet */
-			if (sub_icmp6_error(eth6, icmp_data + 4,
-			    payload_size - sizeof(struct s_icmp) - 4,
-			    packet, &new_len, &icmp, &connection)) {
-				/* something went wrong */
-				return 1;
-			}
+			//if (sub_icmp6_error(eth6, icmp_data + 4,
+			//    payload_size - sizeof(struct s_icmp) - 4,
+			//    packet, &new_len, &icmp, &connection)) {
+			//	/* something went wrong */
+			//	return 1;
+			//}
 
 			/* new packet is almost finished, yay! */
 
@@ -648,6 +651,8 @@ int icmp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload,
  * @return	0 for success
  * @return	1 for failure
  */
+// FIXME
+#if 0
 int icmp_ndp(struct s_ethernet *ethq, struct s_ipv6 *ipq,
 	     struct s_icmp_ndp_ns *ndp_ns)
 {
@@ -713,6 +718,7 @@ int icmp_ndp(struct s_ethernet *ethq, struct s_ipv6 *ipq,
 
 	return 0;
 }
+#endif
 
 /**
  * Sends ICMPv4 error.
@@ -798,6 +804,7 @@ int icmp4_error(struct s_ipv4_addr ip_dest, unsigned char type,
  * @return	0 for success
  * @return	1 for failure
  */
+#if 0
 int icmp6_error(struct s_mac_addr mac_dest, struct s_ipv6_addr ip_dest,
 		unsigned char type, unsigned char code, char *data,
 		unsigned short length)
@@ -861,6 +868,7 @@ int icmp6_error(struct s_mac_addr mac_dest, struct s_ipv6_addr ip_dest,
 
 	return 0;
 }
+#endif
 
 /**
  * Helper function for translating inner packet in ICMPv4 error.
@@ -1044,10 +1052,10 @@ int sub_icmp4_error(char *payload, unsigned short payload_size,
 	/* copy payload, aligned to MTU */
 	/* we can afford to use full MTU instead of just 1280 B as admin
 	 * warrants this to us */
-	if (payload_size > mtu + sizeof(struct s_ethernet) - *packet_len) {
+	if (payload_size > mtu - *packet_len) {
 		memcpy(packet + *packet_len, payload,
-		       mtu + sizeof(struct s_ethernet) - *packet_len);
-		*packet_len = mtu + sizeof(struct s_ethernet);
+		       mtu - *packet_len);
+		*packet_len = mtu;
 	} else {
 		memcpy(packet + *packet_len, payload, payload_size);
 		*packet_len += payload_size;
@@ -1070,6 +1078,8 @@ int sub_icmp4_error(char *payload, unsigned short payload_size,
  * @return	0 for success
  * @return	1 for failure
  */
+//FIXME
+#if 0
 int sub_icmp6_error(struct s_ethernet *eth6,
 		    char *payload, unsigned short payload_size,
 		    char *packet, unsigned short *packet_len,
@@ -1260,3 +1270,4 @@ int sub_icmp6_error(struct s_ethernet *eth6,
 
 	return 0;
 }
+#endif

@@ -20,9 +20,8 @@
 
 #include <arpa/inet.h>		/* inet_pton */
 #include <linux/ethtool.h>	/* struct ethtool_value */
-#include <linux/if_ether.h>	/* ETH_P_ALL */
 #include <linux/sockios.h>	/* SIOCETHTOOL */
-#include <net/ethernet.h>	/* ETHERTYPE_* */
+#include <linux/ip.h>
 #include <net/if.h>		/* struct ifreq */
 #include <netinet/in.h>		/* htons */
 #include <netpacket/packet.h>	/* struct packet_mreq, struct sockaddr_ll */
@@ -33,13 +32,15 @@
 #include <sys/types.h>		/* caddr_t */
 #include <time.h>		/* time, time_t */
 #include <unistd.h>		/* close */
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <linux/if_tun.h>
 
-#include "arp.h"
 #ifdef HAVE_CONFIG_H
 #include "autoconfig.h"
 #endif /* HAVE_CONFIG_H */
 #include "config.h"
-#include "ethernet.h"
 #include "icmp.h"
 #include "ipv4.h"
 #include "ipv6.h"
@@ -57,8 +58,37 @@ struct s_ipv6_addr	wrapsix_ipv6_prefix;
 struct s_ipv4_addr	wrapsix_ipv4_addr;
 struct s_ipv6_addr	host_ipv6_addr;
 struct s_ipv4_addr	host_ipv4_addr;
+int tun_fd;
 
 static int process(char *packet, unsigned short length);
+
+int tun_alloc(char *dev, int flags) {
+
+  struct ifreq ifr;
+  int fd, err;
+
+  if( (fd = open("/dev/net/tun", O_RDWR)) < 0 ) {
+    perror("Opening /dev/net/tun");
+    return fd;
+  }
+
+  memset(&ifr, 0, sizeof(ifr));
+
+  ifr.ifr_flags = flags;
+
+  if (*dev) {
+    strncpy(ifr.ifr_name, dev, IFNAMSIZ);
+  }
+
+  if( (err = ioctl(fd, TUNSETIFF, (void *)&ifr)) < 0 ) {
+    perror("ioctl(TUNSETIFF)");
+    close(fd);
+    return err;
+  }
+
+ // strncpy(dev, ifr.ifr_name, IFNAMSIZ);
+  return fd;
+}
 
 int main(int argc, char **argv)
 {
@@ -111,6 +141,14 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+    int flags = IFF_TUN;
+    char *if_name = "tuna";
+    /* initialize tun/tap interface */
+    if ((tun_fd = tun_alloc(if_name, flags | IFF_NO_PI)) < 0 ) {
+      log_error("Error connecting to tun/tap interface %s!\n", if_name);
+      exit(1);
+    }
+
 	/* get the interface */
 	strncpy(interface.ifr_name, cfg.interface, IFNAMSIZ);
 	if (ioctl(sniff_sock, SIOCGIFINDEX, &interface) == -1) {
@@ -144,17 +182,6 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	/* set the promiscuous mode */
-	memset(&pmr, 0x0, sizeof(pmr));
-	pmr.mr_ifindex = interface.ifr_ifindex;
-	pmr.mr_type = PACKET_MR_PROMISC;
-	if (setsockopt(sniff_sock, SOL_PACKET, PACKET_ADD_MEMBERSHIP,
-	    (char *) &pmr, sizeof(pmr)) == -1) {
-		log_error("Unable to set the promiscuous mode on the "
-			  "interface");
-		return 1;
-	}
-
 	/* some preparations */
 	/* compute binary IPv6 address of NDP multicast */
 	inet_pton(AF_INET6, "ff02::1:ff00:0", &ndp_multicast_addr);
@@ -182,7 +209,8 @@ int main(int argc, char **argv)
 
 	/* sniff! :c) */
 	for (i = 1;; i++) {
-		length = recv(sniff_sock, buffer, PACKET_BUFFER, MSG_TRUNC);
+		//length = recv(sniff_sock, buffer, PACKET_BUFFER, MSG_TRUNC);
+		length = read(tun_fd, buffer, PACKET_BUFFER);
 		if (length == -1) {
 			perror("recv");
 			log_error("Unable to retrieve data from socket");
@@ -241,30 +269,22 @@ int main(int argc, char **argv)
  */
 static int process(char *packet, unsigned short length)
 {
-	struct s_ethernet *eth;
-
 	/* sanity check: out of every combination this is the smallest one */
-	if (length < sizeof(struct s_ethernet) + sizeof(struct s_ipv4) +
+	if (length < sizeof(struct s_ipv4) +
 	    sizeof(struct s_icmp)) {
+		log_error("length to short");
 		return 1;
 	}
 
-	/* parse ethernet header */
-	eth = (struct s_ethernet *) packet;
+    struct iphdr *ip = (struct iphdr *)(packet);
 
-	#define payload		packet + sizeof(struct s_ethernet)
-	#define payload_length	length - sizeof(struct s_ethernet)
-
-	switch (htons(eth->type)) {
-		case ETHERTYPE_IP:
-			return ipv4(eth, payload, payload_length);
-		case ETHERTYPE_IPV6:
-			return ipv6(eth, payload, payload_length);
-		case ETHERTYPE_ARP:
-			return arp(eth, payload, payload_length);
+	switch (ip->version) {
+		case 4:
+			return ipv4(packet, length);
+		case 6:
+			return ipv6(packet, length);
 		default:
-			log_debug("HW Protocol: unknown [%d/0x%04x]",
-			       htons(eth->type), htons(eth->type));
+			log_debug("unknown IP version");
 			return 1;
 	}
 

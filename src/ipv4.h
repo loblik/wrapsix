@@ -19,8 +19,6 @@
 #ifndef IPV4_H
 #define IPV4_H
 
-#include "ethernet.h"
-
 /* IPv4 flags */
 #define IPV4_FLAG_DONT_FRAGMENT		0x4000
 #define IPV4_FLAG_MORE_FRAGMENTS	0x2000
@@ -64,6 +62,6 @@ struct s_ipv4_pseudo_delta {
 							 address */
 } __attribute__ ((__packed__));
 
-int ipv4(struct s_ethernet *eth, char *packet, unsigned short length);
+int ipv4(char *packet, unsigned short length);
 
 #endif /* IPV4_H */

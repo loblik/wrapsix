@@ -22,6 +22,8 @@
 #include "ipv4.h"
 #include "ipv6.h"
 
+#include "wrapper.h"
+
 /* ICMP types */
 #define ICMPV4_ECHO_REPLY	0x0
 #define ICMPV4_ECHO_REQUEST	0x8
@@ -77,11 +79,12 @@ struct s_icmp_ndp_na {
 							  link-layer address */
 } __attribute__ ((__packed__));
 
-int icmp_ipv4(struct s_ethernet *eth, struct s_ipv4 *ip4, char *payload,
+int icmp_ipv4(struct s_ipv4 *ip4, char *payload,
 	      unsigned short payload_size);
-int icmp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload,
+int icmp_ipv6(struct s_ipv6 *ip6, char *payload,
 	      unsigned short payload_size);
-int icmp_ndp(struct s_ethernet *ethq, struct s_ipv6 *ipq,
+
+int icmp_ndp(struct s_ipv6 *ipq,
 	     struct s_icmp_ndp_ns *ndp_ns);
 
 int icmp4_error(struct s_ipv4_addr ip_dest, unsigned char type,

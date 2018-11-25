@@ -18,14 +18,15 @@
 
 #include <stdlib.h>		/* malloc */
 #include <time.h>		/* time */
+#include <string.h>		/* time */
 
-#include "ethernet.h"
 #include "ipv4.h"
 #include "ipv6.h"
 #include "log.h"
 #include "nat.h"
 #include "radixtree.h"
-#include "wrapper.h"
+
+
 
 struct s_radixtree_nat6 {
 	struct s_ipv6_addr	ipv6;
@@ -149,7 +150,9 @@ struct s_nat *nat_out(radixtree_t *nat_proto6, radixtree_t *nat_proto4,
 				return NULL;
 			}
 
-			connection->mac = eth_src;
+			//connection->mac = eth_src;
+            unsigned char mac[] = { 0xde, 0xad, 0xbe, 0xef, 0xde, 0xad };
+			memcpy(&connection->mac, &mac, sizeof(mac));
 			connection->ipv6 = ipv6_src;
 			connection->ipv4 = radixsearch6.ipv4;
 			connection->ipv6_port_src = port_src;

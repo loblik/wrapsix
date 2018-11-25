@@ -21,11 +21,28 @@
 
 #include "ipv4.h"
 #include "ipv6.h"
+#include <arpa/inet.h>
+
 
 /* +++ INTERNAL CONFIGURATION +++ */
 #define MAX_MTU		1500	/* maximum MTU on IPv6 side */
 #define PACKET_BUFFER	1514	/* buffer for any packet */
 /* --- INTERNAL CONFIGURATION --- */
+
+#define IP4_TXT(array, ip) \
+    char (array)[100]; \
+    inet_ntop(AF_INET, ip, array, sizeof(array)); \
+
+#define IP6_TXT(array, ip) \
+    char (array)[100]; \
+    inet_ntop(AF_INET6, ip, array, sizeof(array)); \
+
+/* MAC address structure */
+struct s_mac_addr {
+       unsigned char           addr[6];
+} __attribute__ ((__packed__));
+
+extern int tun_fd;
 
 extern unsigned short		mtu;
 extern struct ifreq		interface;

@@ -26,6 +26,8 @@
 #include <netpacket/packet.h>	/* sockaddr_ll, PACKET_OTHERHOST */
 #include <stdio.h>		/* perror */
 #include <string.h>		/* memcpy */
+#include <linux/ip.h>
+#include <linux/ipv6.h>
 #include <unistd.h>		/* close */
 
 #include "ipv4.h"
@@ -56,20 +58,19 @@ int transmission_init(void)
 	socket_address.sll_pkttype	= PACKET_OTHERHOST;
 
 	/* initialize RAW socket */
-	if ((sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) == -1) {
+	if ((sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP))) == -1) {
 		log_error("Couldn't open RAW socket.");
 		perror("socket()");
 		return 1;
 	}
 
-	/* bind the socket to the interface */
-	if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, &interface,
-	    sizeof(struct ifreq)) == -1) {
-		log_error("Couldn't bind the socket to the interface.");
-		perror("setsockopt()");
-		return 1;
-	}
-
+//	/* bind the socket to the interface */
+//	if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, &interface,
+//	    sizeof(struct ifreq)) == -1) {
+//		log_error("Couldn't bind the socket to the interface.");
+//		perror("setsockopt()");
+//		return 1;
+//	}
 
 	/** IPv4 socket **/
 	/* prepare settings for RAW IPv4 socket */
@@ -123,12 +124,26 @@ int transmission_quit(void)
  */
 int transmit_raw(char *data, unsigned int length)
 {
-	if (sendto(sock, data, length, 0, (struct sockaddr *) &socket_address,
-	    sizeof(struct sockaddr_ll)) != (int) length) {
-		log_error("Couldn't send a RAW packet.");
-		perror("sendto()");
-		return 1;
-	}
+    struct ipv6hdr *ip = (struct ipv6hdr *)(data);
+    struct s_ipv6 *ip2 = (struct s_ipv6*)(data);
+
+    IP6_TXT(from, &ip->saddr);
+    IP6_TXT(to, &ip->daddr);
+    log_debug("IPv6 send: %s > %s", from, to);
+
+    int ret = write (tun_fd, data, length);
+    if (ret < 0)
+    {
+	    log_error("could not send TUN packet");
+        return 1;
+    }
+
+	//if (sendto(sock, data, length, 0, (struct sockaddr *) &socket_address,
+	//    sizeof(struct sockaddr_ll)) != (int) length) {
+	//	log_error("Couldn't send a RAW packet.");
+	//	perror("sendto()");
+	//	return 1;
+	//}
 
 	return 0;
 }
@@ -149,6 +164,10 @@ int transmit_ipv4(struct s_ipv4_addr *ip, char *data, unsigned int length)
 	/* set the destination IPv4 address */
 	memcpy(&socket_address_ipv4.sin_addr.s_addr, ip,
 	       sizeof(struct s_ipv4_addr));
+    struct s_ipv4 *hdr = (struct s_ipv4*)data;
+    IP4_TXT(src, &hdr->ip_src);
+    IP4_TXT(dst, &hdr->ip_dest);
+	log_debug("IPv4 send: %s > %s", src, dst);
 
 	if (sendto(sock_ipv4, data, length, 0,
 	    (struct sockaddr *) &socket_address_ipv4,

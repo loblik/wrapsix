@@ -19,8 +19,6 @@
 #ifndef IPV6_H
 #define IPV6_H
 
-#include "ethernet.h"		/* s_ethernet */
-
 #define IPV6_FLAG_MORE_FRAGMENTS	0x0001
 
 /* IPv6 address structure */
@@ -68,6 +66,6 @@ struct s_ipv6_pseudo_delta {
 							  address */
 } __attribute__ ((__packed__));
 
-int ipv6(struct s_ethernet *eth, char *packet, unsigned short length);
+int ipv6(char *packet, unsigned short length);
 
 #endif /* IPV6_H */

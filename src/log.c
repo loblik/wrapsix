@@ -18,6 +18,7 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <time.h>
 
 #include "log.h"
 
@@ -27,12 +28,13 @@
  * @param	msg	Formatted message
  * @param	...	Parameters to be included in the message
  */
+#define DEBUG
 void log_debug(const char *msg, ...)
 {
 #ifdef DEBUG
 	va_list args;
 
-	fprintf(stdout, "[Debug] ");
+	fprintf(stdout, "[Debug %08ld] ", clock());
 
 	va_start(args, msg);
 	vfprintf(stdout, msg, args);
