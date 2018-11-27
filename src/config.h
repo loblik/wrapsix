@@ -22,15 +22,19 @@
 #include "ipv4.h"
 #include "ipv6.h"
 
+#include <arpa/inet.h>
+#include <linux/if.h>
+
 struct s_cfg_opts {
-	char interface[128];
-	char prefix[128];
-	char ipv4_address[16];
+	char interface[IFNAMSIZ];
+	char prefix[INET6_ADDRSTRLEN];
+	char ipv4_address[INET_ADDRSTRLEN];
+    char ipv6_address[INET6_ADDRSTRLEN];
 };
 
 int cfg_parse(const char *config_file, unsigned short *cmtu,
 	      struct s_cfg_opts *oto, unsigned char init);
 int cfg_host_ips(char *cinterface, struct s_ipv6_addr *ipv6_addr,
-		 struct s_ipv4_addr *ipv4_addr, char *default_ipv4_addr);
+		 struct s_ipv4_addr *ipv4_addr);
 
 #endif /* CONFIG_H */

@@ -37,7 +37,7 @@
 			fclose(f); \
 			if (fatal) { \
 				exit(1); \
-			} else { \
+            } else { \
 				return 1; \
 			} \
 		}
@@ -71,7 +71,7 @@ int cfg_parse(const char *config_file, unsigned short *cmtu,
 	char c;
 
 	unsigned short opt_len, wht_len, val_len;
-	char tmp_opt[32], tmp_val[128];
+	char tmp_opt[32], tmp_val[256];
 
 	/* set defaults */
 	*cmtu = C_DEFAULT_MTU;
@@ -170,15 +170,35 @@ int cfg_parse(const char *config_file, unsigned short *cmtu,
 				*cmtu = C_DEFAULT_MTU;
 			}
 		} else if (!strcmp(tmp_opt, "interface")) {
+            if (val_len >= IFNAMSIZ)
+            {
+			    log_error("interface name too long");
+				SYNTAX_ERROR(config_file, ln, opt_len + wht_len, init);
+            }
 			strncpy(oto->interface, tmp_val,
 				sizeof(oto->interface));
 		} else if (!strcmp(tmp_opt, "prefix")) {
+            if (val_len >= INET6_ADDRSTRLEN)
+            {
+			    log_error("prefix option too long");
+				SYNTAX_ERROR(config_file, ln, opt_len + wht_len, init);
+            }
 			strncpy(oto->prefix, tmp_val, sizeof(oto->prefix));
 		} else if (!strcmp(tmp_opt, "ipv4_address")) {
-			if (val_len < sizeof(oto->ipv4_address)) {
+			if (val_len < INET_ADDRSTRLEN) {
 				strncpy(oto->ipv4_address, tmp_val,
 					sizeof(oto->ipv4_address));
 			} else {
+			    log_error("ipv4_address option too long");
+				SYNTAX_ERROR(config_file, ln, opt_len + wht_len,
+					     init);
+			}
+		} else if (!strcmp(tmp_opt, "ipv6_address")) {
+			if (val_len < INET6_ADDRSTRLEN) {
+				strncpy(oto->ipv6_address, tmp_val,
+					sizeof(oto->ipv6_address));
+			} else {
+			    log_error("ipv6_address option too long");
 				SYNTAX_ERROR(config_file, ln, opt_len + wht_len,
 					     init);
 			}
@@ -194,108 +214,6 @@ int cfg_parse(const char *config_file, unsigned short *cmtu,
 		log_error("IPv4 address unconfigured! Exiting");
 		exit(1);
 	}
-
-	return 0;
-}
-
-/**
- * Configures host IP addresses for usage in ICMP error messages. If some or
- * both is not available, defaults are used.
- *
- * As a default in case of IPv4 is used IPv4 address assigned to WrapSix in
- * configuration, in case of IPv6 is used made up address from default NAT64
- * prefix -- WrapSix itself cannot act as a host so it doesn't matter.
- *
- * @param	cinterface		Name of the interface WrapSix sits on
- * @param	ipv6_addr		Where to save host IPv6 address
- * @param	ipv4_addr		Where to save host IPv4 address
- * @param	default_ipv4_addr	IPv4 address assigned to WrapSix
- *
- * @return      0 for success
- * @return      1 for failure
- */
-int cfg_host_ips(char *cinterface, struct s_ipv6_addr *ipv6_addr,
-		 struct s_ipv4_addr *ipv4_addr, char *default_ipv4_addr)
-{
-	struct ifaddrs *ifaddr, *ifa;
-	/* 0x01 IPv6 from WrapSix' interface
-	 * 0x02 IPv4 from WrapSix' interface
-	 * 0x04 IPv6 from another interface
-	 * 0x08 IPv4 from another interface
-	 */
-	char found = 0;
-	char ip_text[40];
-
-	if (getifaddrs(&ifaddr) == -1) {
-		perror("getifaddrs");
-		return 1;
-	}
-
-	/* Walk through linked list, maintaining head pointer so we can free
-	 * list later */
-
-	/* first try to get addresses from the interface */
-	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-		if (ifa->ifa_addr == NULL) {
-			continue;
-		}
-
-		if (!strcmp(ifa->ifa_name, cinterface)) {
-			if (ifa->ifa_addr->sa_family == AF_INET6 &&
-			    !(found & 0x01)) {
-				found |= 0x01;
-				getnameinfo(ifa->ifa_addr,
-					    sizeof(struct sockaddr_in6),
-					    ip_text, sizeof(ip_text), NULL, 0,
-					    NI_NUMERICHOST);
-				inet_pton(AF_INET6, ip_text, ipv6_addr);
-			} else if (ifa->ifa_addr->sa_family == AF_INET &&
-				   !(found & 0x02)) {
-				found |= 0x02;
-				getnameinfo(ifa->ifa_addr,
-					    sizeof(struct sockaddr_in),
-					    ip_text, sizeof(ip_text), NULL, 0,
-					    NI_NUMERICHOST);
-				inet_pton(AF_INET, ip_text, ipv4_addr);
-			}
-		} else {	/* look for addresses on other interfaces too */
-			if (ifa->ifa_addr->sa_family == AF_INET6 &&
-			    !(found & 0x05)) {
-				found |= 0x04;
-				getnameinfo(ifa->ifa_addr,
-					    sizeof(struct sockaddr_in6),
-					    ip_text, sizeof(ip_text), NULL, 0,
-					    NI_NUMERICHOST);
-				inet_pton(AF_INET6, ip_text, ipv6_addr);
-			} else if (ifa->ifa_addr->sa_family == AF_INET &&
-				   !(found & 0x0a)) {
-				found |= 0x08;
-				getnameinfo(ifa->ifa_addr,
-					    sizeof(struct sockaddr_in),
-					    ip_text, sizeof(ip_text), NULL, 0,
-					    NI_NUMERICHOST);
-				inet_pton(AF_INET, ip_text, ipv4_addr);
-			}
-		}
-
-		if ((found & 0x03) == 0x03) {
-			break;
-		}
-	}
-
-	/* no IPv4 address -> use default */
-	if (!(found & 0x0a)) {
-		inet_pton(AF_INET, default_ipv4_addr, ipv4_addr);
-	}
-
-	/* IPv6 default? huh... but we can't work without host IPv6 address */
-	if (!(found & 0x05)) {
-		/* the IPv4 in there is from class E, just to be sure */
-		/* FUN: try to decode it ;c) */
-		inet_pton(AF_INET6, "64:ff9b::F7ad:514", ipv6_addr);
-	}
-
-	freeifaddrs(ifaddr);
 
 	return 0;
 }

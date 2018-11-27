@@ -752,7 +752,7 @@ int icmp4_error(struct s_ipv4_addr ip_dest, unsigned char type,
 	ip4->flags_offset = htons(IPV4_FLAG_DONT_FRAGMENT);
 	ip4->ttl	  = 255;
 	ip4->proto	  = IPPROTO_ICMP;
-	ip4->ip_src	  = host_ipv4_addr;
+	ip4->ip_src	  = wrapsix_ipv4_addr;
 	ip4->ip_dest	  = ip_dest;
 
 	/* build ICMP header */
@@ -820,7 +820,7 @@ int icmp6_error(struct s_ipv6_addr ip_dest,
 	ip6->len	 = htons(sizeof(struct s_icmp) + 4 + payload_size);
 	ip6->next_header = IPPROTO_ICMPV6;
 	ip6->hop_limit	 = 255;
-	ip6->ip_src	 = host_ipv6_addr;
+	ip6->ip_src	     = wrapsix_ipv6_addr;
 	ip6->ip_dest	 = ip_dest;
 
 	/* ICMP */
@@ -835,7 +835,7 @@ int icmp6_error(struct s_ipv6_addr ip_dest,
 	memcpy(payload, data, payload_size);
 
 	/* compute ICMP checksum */
-	icmp->checksum = checksum_ipv6(host_ipv6_addr, ip_dest,
+	icmp->checksum = checksum_ipv6(wrapsix_ipv6_addr, ip_dest,
 				       sizeof(struct s_icmp) + 4 + payload_size,
 				       IPPROTO_ICMPV6, (char *) icmp);
 

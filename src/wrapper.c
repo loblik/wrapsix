@@ -55,8 +55,7 @@ struct s_mac_addr	mac;
 struct s_ipv6_addr	ndp_multicast_addr;
 struct s_ipv6_addr	wrapsix_ipv6_prefix;
 struct s_ipv4_addr	wrapsix_ipv4_addr;
-struct s_ipv6_addr	host_ipv6_addr;
-struct s_ipv4_addr	host_ipv4_addr;
+struct s_ipv6_addr	wrapsix_ipv6_addr;
 int tun_fd;
 
 static int process(char *packet, unsigned short length);
@@ -84,24 +83,21 @@ int main(int argc, char **argv)
 	}
 
 	log_info("Using: interface %s", cfg.interface);
-	log_info("       prefix %s", cfg.prefix);
+	log_info("       NAT64 prefix %s", cfg.prefix);
 	log_info("       MTU %d", mtu);
-	log_info("       IPv4 address %s", cfg.ipv4_address);
 
-	/* get host IP addresses */
-	if (cfg_host_ips(cfg.interface, &host_ipv6_addr, &host_ipv4_addr,
-	    cfg.ipv4_address)) {
-		log_error("Unable to get host IP addresses");
-		return 1;
-	}
+	inet_pton(AF_INET, cfg.ipv4_address, &wrapsix_ipv4_addr);
+	inet_pton(AF_INET6, cfg.ipv6_address, &wrapsix_ipv6_addr);
+
 	/* using block because of the temporary variable */
 	{
 		char ip_text[40];
 
-		inet_ntop(AF_INET, &host_ipv4_addr, ip_text, sizeof(ip_text));
-		log_info("       host IPv4 address %s", ip_text);
-		inet_ntop(AF_INET6, &host_ipv6_addr, ip_text, sizeof(ip_text));
-		log_info("       host IPv6 address %s", ip_text);
+
+		inet_ntop(AF_INET, &wrapsix_ipv4_addr, ip_text, sizeof(ip_text));
+		log_info("       IPv4 address %s", ip_text);
+		inet_ntop(AF_INET6, &wrapsix_ipv6_addr, ip_text, sizeof(ip_text));
+		log_info("       IPv6 address %s", ip_text);
 	}
 
 	/* some preparations */
