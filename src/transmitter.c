@@ -18,26 +18,28 @@
 
 #define _DEFAULT_SOURCE
 
-#include <net/if.h>		/* struct ifreq */
-#include <netinet/if_ether.h>	/* {P,A}F_PACKET, ETH_P_*, socket, SOCK_RAW,
-				 * setsockopt, SOL_SOCKET, SO_BINDTODEVICE,
-				 * sendto */
-#include <netinet/in.h>		/* htons */
-#include <netpacket/packet.h>	/* sockaddr_ll, PACKET_OTHERHOST */
-#include <stdio.h>		/* perror */
-#include <string.h>		/* memcpy */
-#include <linux/ip.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 #include <linux/ipv6.h>
-#include <unistd.h>		/* close */
+#include <linux/ip.h>
+#include <linux/if_tun.h>
+#include <linux/if.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 
 #include "ipv4.h"
 #include "log.h"
 #include "transmitter.h"
 #include "wrapper.h"
 
-struct sockaddr_ll	socket_address;
-struct sockaddr_in	socket_address_ipv4;
-int			sock, sock_ipv4;
+
+static int tun_fd = -1;
+
+static int transmit_tun(const char *data, unsigned int length);
 
 /**
  * Initialize sockets and all needed properties. Should be called only once on
@@ -46,83 +48,68 @@ int			sock, sock_ipv4;
  * @return	0 for success
  * @return	1 for failure
  */
-int transmission_init(void)
+int transmission_init(struct s_cfg_opts	cfg)
 {
-	unsigned char on = 1;
+    struct ifreq ifr;
 
-	/** RAW socket **/
-	/* prepare settings for RAW socket */
-	socket_address.sll_family	= PF_PACKET;	/* raw communication */
-	socket_address.sll_protocol	= htons(ETH_P_IP);	/* L3 proto */
-	socket_address.sll_ifindex	= interface.ifr_ifindex;
-	socket_address.sll_pkttype	= PACKET_OTHERHOST;
+    if((tun_fd = open("/dev/net/tun", O_RDWR)) < 0 ) {
+      perror("Opening /dev/net/tun");
+      return 0;
+    }
 
-	/* initialize RAW socket */
-	if ((sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP))) == -1) {
-		log_error("Couldn't open RAW socket.");
-		perror("socket()");
-		return 1;
-	}
+    memset(&ifr, 0, sizeof(ifr));
+    ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
 
-//	/* bind the socket to the interface */
-//	if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, &interface,
-//	    sizeof(struct ifreq)) == -1) {
-//		log_error("Couldn't bind the socket to the interface.");
-//		perror("setsockopt()");
-//		return 1;
-//	}
+    if (cfg.interface) {
+      strncpy(ifr.ifr_name, cfg.interface, IFNAMSIZ);
+    }
 
-	/** IPv4 socket **/
-	/* prepare settings for RAW IPv4 socket */
-	socket_address_ipv4.sin_family	= AF_INET;
-	socket_address_ipv4.sin_port	= 0x0;
+    if(ioctl(tun_fd, TUNSETIFF, (void *)&ifr) < 0 ) {
+      perror("ioctl(TUNSETIFF)");
+      close(tun_fd);
+      return 0;
+    }
 
-	/* initialize RAW IPv4 socket */
-	if ((sock_ipv4 = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) == -1) {
-		log_error("Couldn't open RAW IPv4 socket.");
-		perror("socket()");
-		return 1;
-	}
-
-	/* we will provide our own IPv4 header */
-	if (setsockopt(sock_ipv4, IPPROTO_IP, IP_HDRINCL, &on,
-	    sizeof(on)) == -1) {
-		log_error("Couldn't apply the socket settings.");
-		perror("setsockopt()");
-		return 1;
-	}
-
-	return 0;
+	return 1;
 }
 
 /**
- * Close sockets. Should be called only once on program shutdown.
+ * Read packet from TUN device.
+ *
+ * @return	0 for success
+ * @return	1 for failure
+ */
+int transmission_read(char *buffer, unsigned int length)
+{
+    int bytes = read(tun_fd, buffer, length);
+    if (bytes < 0) {
+        perror("read");
+        return -1;
+    }
+    return bytes;
+}
+
+/**
+ * Close TUN device. Should be called only once on program shutdown.
  *
  * @return	0 for success
  * @return	1 for failure
  */
 int transmission_quit(void)
 {
-	/* close the socket */
-	if (close(sock) || close(sock_ipv4)) {
-		log_warn("Couldn't close the transmission sockets.");
-		perror("close()");
-		return 1;
-	} else {
-		return 0;
-	}
+    close(tun_fd);
 }
 
 /**
- * Send raw packet -- not doing any modifications to it.
+ * Send IPv6 packet with IPv6 header supplied.
  *
- * @param	data	Raw packet data, including ethernet header
+ * @param	data	Raw packet data, including IPv6 header
  * @param	length	Length of the whole packet in bytes
  *
  * @return	0 for success
  * @return	1 for failure
  */
-int transmit_raw(char *data, unsigned int length)
+int transmit_ipv6(const char *data, unsigned int length)
 {
     struct ipv6hdr *ip = (struct ipv6hdr *)(data);
     struct s_ipv6 *ip2 = (struct s_ipv6*)(data);
@@ -131,51 +118,45 @@ int transmit_raw(char *data, unsigned int length)
     IP6_TXT(to, &ip->daddr);
     log_debug("IPv6 send: %s > %s", from, to);
 
-    int ret = write (tun_fd, data, length);
-    if (ret < 0)
-    {
-	    log_error("could not send TUN packet");
-        return 1;
-    }
-
-	//if (sendto(sock, data, length, 0, (struct sockaddr *) &socket_address,
-	//    sizeof(struct sockaddr_ll)) != (int) length) {
-	//	log_error("Couldn't send a RAW packet.");
-	//	perror("sendto()");
-	//	return 1;
-	//}
-
-	return 0;
+	return transmit_tun(data, length);
 }
 
 /**
- * Send IPv4 packet with IPv4 header supplied. Ethernet header is added by OS.
+ * Send IPv4 packet with IPv4 header supplied.
  *
- * @param	ip	Destination IPv4 address
- * @param	data	Raw packet data, excluding ethernet header, but
- * 			including IPv4 header
+ * @param	data	Raw packet data including IPv4 header
  * @param	length	Length of the whole packet in bytes
  *
  * @return	0 for success
  * @return	1 for failure
  */
-int transmit_ipv4(struct s_ipv4_addr *ip, char *data, unsigned int length)
+int transmit_ipv4(const char *data, unsigned int length)
 {
-	/* set the destination IPv4 address */
-	memcpy(&socket_address_ipv4.sin_addr.s_addr, ip,
-	       sizeof(struct s_ipv4_addr));
     struct s_ipv4 *hdr = (struct s_ipv4*)data;
+
     IP4_TXT(src, &hdr->ip_src);
     IP4_TXT(dst, &hdr->ip_dest);
 	log_debug("IPv4 send: %s > %s", src, dst);
 
-	if (sendto(sock_ipv4, data, length, 0,
-	    (struct sockaddr *) &socket_address_ipv4,
-	    sizeof(struct sockaddr)) != (int) length) {
-		log_error("Couldn't send an IPv4 packet.");
-		perror("sendto()");
-		return 1;
-	}
+	return transmit_tun(data, length);
+}
 
-	return 0;
+/**
+ * Send IP packet payload to tun device
+ *
+ * @param	data	Raw IP packet
+ * @param	length	Total length in bytes
+ *
+ * @return	0 for success
+ * @return	1 for failure
+ */
+int transmit_tun(const char *data, unsigned int length)
+{
+    int ret = write(tun_fd, data, length);
+    if (ret < 0)
+    {
+	    log_error("could not send TUN packet");
+        return 1;
+    }
+    return 0;
 }

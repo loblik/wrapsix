@@ -330,7 +330,7 @@ int icmp_ipv4(struct s_ipv4 *ip4, char *payload,
 				       (char *) icmp);
 
 	/* send translated packet */
-	transmit_raw(packet, new_len);
+	transmit_ipv6(packet, new_len);
 
 	return 0;
 }
@@ -632,11 +632,11 @@ int icmp_ipv6(struct s_ipv6 *ip6, char *payload,
 				  sizeof(struct s_ipv4));
 
 	/* compute IPv4 checksum */
-	ip4->checksum = checksum_ipv4(ip4->ip_src, ip4->ip_dest,
-				      new_len, IPPROTO_ICMP, (char *) icmp);
+	ip4->checksum = 0x0;
+	ip4->checksum = checksum(ip4, sizeof(struct s_ipv4));
 
 	/* send translated packet */
-	transmit_ipv4(&ip4->ip_dest, packet, new_len);
+	transmit_ipv4(packet, new_len);
 
 	return 0;
 }
@@ -786,7 +786,7 @@ int icmp4_error(struct s_ipv4_addr ip_dest, unsigned char type,
 				      (char *) icmp);
 
 	/* send packet */
-	transmit_ipv4(&ip4->ip_dest, packet, htons(ip4->len));
+	transmit_ipv4(packet, htons(ip4->len));
 
 	return 0;
 }

@@ -42,7 +42,6 @@ struct s_mac_addr {
        unsigned char           addr[6];
 } __attribute__ ((__packed__));
 
-extern int tun_fd;
 
 extern unsigned short		mtu;
 extern struct ifreq		interface;

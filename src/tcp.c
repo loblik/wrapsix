@@ -243,7 +243,7 @@ int tcp_ipv4(struct s_ipv4 *ip4, char *payload,
 			       payload, FRAGMENT_LEN);
 
 			/* send translated packet */
-			transmit_raw(packet, sizeof(struct s_ipv6) +
+			transmit_ipv6(packet, sizeof(struct s_ipv6) +
 					     sizeof(struct s_ipv6_fragment) +
 					     FRAGMENT_LEN);
 
@@ -259,7 +259,7 @@ int tcp_ipv4(struct s_ipv4 *ip4, char *payload,
 			       payload_size - FRAGMENT_LEN);
 
 			/* send translated packet */
-			transmit_raw(packet,
+			transmit_ipv6(packet,
 					     sizeof(struct s_ipv6) +
 					     sizeof(struct s_ipv6_fragment) -
 					     FRAGMENT_LEN + payload_size);
@@ -272,7 +272,7 @@ int tcp_ipv4(struct s_ipv4 *ip4, char *payload,
 			       payload, payload_size);
 
 			/* send translated packet */
-			transmit_raw(packet,
+			transmit_ipv6(packet,
                     sizeof(struct s_ipv6) + payload_size);
 		}
 	} else {
@@ -351,7 +351,7 @@ int tcp_ipv4(struct s_ipv4 *ip4, char *payload,
 			       payload, FRAGMENT_LEN);
 
 			/* send translated packet */
-			transmit_raw(packet, mtu);
+			transmit_ipv6(packet, mtu);
 
 			/* create the second fragment */
 			ip6->len = htons(payload_size +
@@ -372,7 +372,7 @@ int tcp_ipv4(struct s_ipv4 *ip4, char *payload,
 			       payload_size - FRAGMENT_LEN);
 
 			/* send translated packet */
-			transmit_raw(packet, sizeof(struct s_ipv6) +
+			transmit_ipv6(packet, sizeof(struct s_ipv6) +
 					     sizeof(struct s_ipv6_fragment) -
 					     FRAGMENT_LEN + payload_size);
 		} else {
@@ -395,7 +395,7 @@ int tcp_ipv4(struct s_ipv4 *ip4, char *payload,
 			       payload, payload_size);
 
 			/* send translated packet */
-			transmit_raw(packet, sizeof(struct s_ipv6) +
+			transmit_ipv6(packet, sizeof(struct s_ipv6) +
 				     sizeof(struct s_ipv6_fragment) +
 				     payload_size);
 		}
@@ -555,7 +555,7 @@ int tcp_ipv6(struct s_ipv6 *ip6, char *payload,
 	ip4->checksum = checksum(ip4, sizeof(struct s_ipv4));
 
 	/* send translated packet */
-	transmit_ipv4(&ip4->ip_dest, packet, sizeof(struct s_ipv4) +
+	transmit_ipv4(packet, sizeof(struct s_ipv4) +
 		      payload_size);
 
 	return 0;

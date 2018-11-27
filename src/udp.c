@@ -122,7 +122,7 @@ int udp_ipv4(struct s_ipv4 *ip4, char *payload,
 	       payload, payload_size);
 
 	/* send translated packet */
-	transmit_raw(packet, sizeof(struct s_ipv6) +
+	transmit_ipv6(packet, sizeof(struct s_ipv6) +
 		     payload_size);
 
 	return 0;
@@ -223,7 +223,7 @@ int udp_ipv6(struct s_ipv6 *ip6, char *payload,
 	ip4->checksum = checksum(ip4, sizeof(struct s_ipv4));
 
 	/* send translated packet */
-	transmit_ipv4(&ip4->ip_dest, packet, packet_size);
+	transmit_ipv4(packet, packet_size);
 
 	return 0;
 }

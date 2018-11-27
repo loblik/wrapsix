@@ -35,7 +35,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <linux/if_tun.h>
 
 #ifdef HAVE_CONFIG_H
 #include "autoconfig.h"
@@ -62,34 +61,6 @@ int tun_fd;
 
 static int process(char *packet, unsigned short length);
 
-int tun_alloc(char *dev, int flags) {
-
-  struct ifreq ifr;
-  int fd, err;
-
-  if( (fd = open("/dev/net/tun", O_RDWR)) < 0 ) {
-    perror("Opening /dev/net/tun");
-    return fd;
-  }
-
-  memset(&ifr, 0, sizeof(ifr));
-
-  ifr.ifr_flags = flags;
-
-  if (*dev) {
-    strncpy(ifr.ifr_name, dev, IFNAMSIZ);
-  }
-
-  if( (err = ioctl(fd, TUNSETIFF, (void *)&ifr)) < 0 ) {
-    perror("ioctl(TUNSETIFF)");
-    close(fd);
-    return err;
-  }
-
- // strncpy(dev, ifr.ifr_name, IFNAMSIZ);
-  return fd;
-}
-
 int main(int argc, char **argv)
 {
 	struct s_cfg_opts	cfg;
@@ -97,7 +68,6 @@ int main(int argc, char **argv)
 	struct packet_mreq	pmr;
 	struct ethtool_value	ethtool;
 
-	int	sniff_sock;
 	int	length;
 	char	buffer[PACKET_BUFFER];
 
@@ -134,54 +104,6 @@ int main(int argc, char **argv)
 		log_info("       host IPv6 address %s", ip_text);
 	}
 
-	/* initialize the socket for sniffing */
-	if ((sniff_sock = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) ==
-	    -1) {
-		log_error("Unable to create listening socket");
-		return 1;
-	}
-
-    int flags = IFF_TUN;
-    char *if_name = "tuna";
-    /* initialize tun/tap interface */
-    if ((tun_fd = tun_alloc(if_name, flags | IFF_NO_PI)) < 0 ) {
-      log_error("Error connecting to tun/tap interface %s!\n", if_name);
-      exit(1);
-    }
-
-	/* get the interface */
-	strncpy(interface.ifr_name, cfg.interface, IFNAMSIZ);
-	if (ioctl(sniff_sock, SIOCGIFINDEX, &interface) == -1) {
-		log_error("Unable to get the interface %s", cfg.interface);
-		return 1;
-	}
-
-	/* get interface's HW address (i.e. MAC) */
-	if (ioctl(sniff_sock, SIOCGIFHWADDR, &interface) == 0) {
-		memcpy(&mac, &interface.ifr_hwaddr.sa_data,
-		       sizeof(struct s_mac_addr));
-
-		/* disable generic receive offload */
-		ethtool.cmd = ETHTOOL_SGRO;
-		ethtool.data = 0;
-		interface.ifr_data = (caddr_t) &ethtool;
-		if (ioctl(sniff_sock, SIOCETHTOOL, &interface) == -1) {
-			log_error("Unable to disable generic receive offload "
-				  "on the interface");
-			return 1;
-		}
-
-		/* reinitialize the interface */
-		interface.ifr_data = NULL;
-		if (ioctl(sniff_sock, SIOCGIFINDEX, &interface) == -1) {
-			log_error("Unable to reinitialize the interface");
-			return 1;
-		}
-	} else {
-		log_error("Unable to get the interface's HW address");
-		return 1;
-	}
-
 	/* some preparations */
 	/* compute binary IPv6 address of NDP multicast */
 	inet_pton(AF_INET6, "ff02::1:ff00:0", &ndp_multicast_addr);
@@ -193,7 +115,7 @@ int main(int argc, char **argv)
 	inet_pton(AF_INET, cfg.ipv4_address, &wrapsix_ipv4_addr);
 
 	/* initiate sending socket */
-	if (transmission_init()) {
+	if (!transmission_init(cfg)) {
 		log_error("Unable to initiate sending socket");
 		return 1;
 	}
@@ -207,12 +129,10 @@ int main(int argc, char **argv)
 	/* initialize time */
 	prevtime = time(NULL);
 
-	/* sniff! :c) */
+	/* read packets from tun device */
 	for (i = 1;; i++) {
-		//length = recv(sniff_sock, buffer, PACKET_BUFFER, MSG_TRUNC);
-		length = read(tun_fd, buffer, PACKET_BUFFER);
-		if (length == -1) {
-			perror("recv");
+		length = transmission_read(buffer, PACKET_BUFFER);
+		if (length < 0) {
 			log_error("Unable to retrieve data from socket");
 			return 1;
 		}
@@ -238,22 +158,13 @@ int main(int argc, char **argv)
 	}
 
 	/* clean-up */
-	/* close sending socket */
 	transmission_quit();
 
 	/* empty NAT tables */
 	nat_quit();
 
-	/* unset the promiscuous mode */
-	if (setsockopt(sniff_sock, SOL_PACKET, PACKET_DROP_MEMBERSHIP,
-	    (char *) &pmr, sizeof(pmr)) == -1) {
-		log_error("Unable to unset the promiscuous mode on the "
-			  "interface");
-		/* do not call return here as we want to close the socket too */
-	}
-
-	/* close the socket */
-	close(sniff_sock);
+	/* close TUN */
+	close(tun_fd);
 
 	return 0;
 }

@@ -19,11 +19,12 @@
 #ifndef TRANSMITTER_H
 #define TRANSMITTER_H
 
-#include "ipv4.h"
+#include "config.h"
 
-int transmission_init(void);
+int transmission_read(char *buffer, unsigned int length);
+int transmission_init(struct s_cfg_opts	cfg);
 int transmission_quit(void);
-int transmit_raw(char *data, unsigned int length);
-int transmit_ipv4(struct s_ipv4_addr *ip, char *data, unsigned int length);
+int transmit_ipv6(const char *data, unsigned int length);
+int transmit_ipv4(const char *data, unsigned int length);
 
 #endif /* TRANSMITTER_H */
