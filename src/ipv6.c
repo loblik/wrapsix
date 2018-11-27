@@ -66,10 +66,8 @@ int ipv6(char *packet, unsigned short length)
 		/* deny this error for error ICMP messages */
 		if (ip->next_header != IPPROTO_ICMPV6 || payload[0] & 0x80) {
 			/* code 0 = hl exceeded in transmit */
-            //FIXME
-			//icmp6_error(eth->src, ip->ip_src, ICMPV6_TIME_EXCEEDED,
-		    //0, packet,
-		    //		    htons(ip->len) + sizeof(struct s_ipv6));
+			icmp6_error(ip->ip_src, ICMPV6_TIME_EXCEEDED,
+		    0, packet, htons(ip->len) + sizeof(struct s_ipv6));
 		}
 		return 1;
 	} else {

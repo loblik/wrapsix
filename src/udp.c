@@ -171,10 +171,8 @@ int udp_ipv6(struct s_ipv6 *ip6, char *payload,
 		return 1;
 	}
 
-	struct s_mac_addr eth_src;
 	/* find connection in NAT */
-	//connection = nat_out(nat6_udp, nat4_udp, eth6->src,
-	connection = nat_out(nat6_udp, nat4_udp, eth_src,
+	connection = nat_out(nat6_udp, nat4_udp,
 			     ip6->ip_src, ip6->ip_dest,
 			     udp->port_src, udp->port_dest, 1);
 

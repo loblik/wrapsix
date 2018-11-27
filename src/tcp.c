@@ -446,9 +446,8 @@ int tcp_ipv6(struct s_ipv6 *ip6, char *payload,
 		return 1;
 	}
 
-    struct s_mac_addr eth_src;
 	/* find connection in NAT */
-	connection = nat_out(nat6_tcp, nat4_tcp, eth_src,
+	connection = nat_out(nat6_tcp, nat4_tcp,
 			     ip6->ip_src, ip6->ip_dest,
 			     tcp->port_src, tcp->port_dest,
 			     tcp->flags & TCP_FLAG_SYN);

@@ -89,8 +89,7 @@ int icmp_ndp(struct s_ipv6 *ipq,
 
 int icmp4_error(struct s_ipv4_addr ip_dest, unsigned char type,
 		unsigned char code, char *data, unsigned short length);
-int icmp6_error(struct s_mac_addr mac_dest, struct s_ipv6_addr ip_dest,
-		unsigned char type, unsigned char code, char *data,
-		unsigned short length);
+int icmp6_error(struct s_ipv6_addr ip_dest, unsigned char type,
+        unsigned char code, char *data, unsigned short length);
 
 #endif /* ICMP_H */

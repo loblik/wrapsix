@@ -112,7 +112,6 @@ void nat_quit(void)
  *
  * @param	nat_proto6	IPv6 NAT table
  * @param	nat_proto4	IPv4 NAT table
- * @param	eth_src		Source MAC address
  * @param	ipv6_src	Source IPv6 address
  * @param	ipv6_dst	Destination IPv6 address
  * @param	port_src	Source port
@@ -123,7 +122,6 @@ void nat_quit(void)
  * @return	pointer to connection structure otherwise
  */
 struct s_nat *nat_out(radixtree_t *nat_proto6, radixtree_t *nat_proto4,
-		      struct s_mac_addr eth_src,
 		      struct s_ipv6_addr ipv6_src, struct s_ipv6_addr ipv6_dst,
 		      unsigned short	 port_src, unsigned short     port_dst,
 		      unsigned char create)
@@ -150,9 +148,7 @@ struct s_nat *nat_out(radixtree_t *nat_proto6, radixtree_t *nat_proto4,
 				return NULL;
 			}
 
-			//connection->mac = eth_src;
             unsigned char mac[] = { 0xde, 0xad, 0xbe, 0xef, 0xde, 0xad };
-			memcpy(&connection->mac, &mac, sizeof(mac));
 			connection->ipv6 = ipv6_src;
 			connection->ipv4 = radixsearch6.ipv4;
 			connection->ipv6_port_src = port_src;

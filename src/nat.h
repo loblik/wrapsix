@@ -24,11 +24,9 @@
 #include "linkedlist.h"		/* linkedlist_h */
 #include "radixtree.h"		/* radixtree_t */
 
-// FIXME
 #include "wrapper.h"
 
 struct s_nat {
-    struct s_mac_addr       mac;
 	struct s_ipv6_addr	ipv6;
 	struct s_ipv4_addr	ipv4;
 	unsigned short		ipv6_port_src;
@@ -56,7 +54,6 @@ void nat_init(void);
 void nat_quit(void);
 
 struct s_nat *nat_out(radixtree_t *nat_proto6, radixtree_t *nat_proto4,
-		      struct s_mac_addr eth_src,
 		      struct s_ipv6_addr ipv6_src, struct s_ipv6_addr ipv6_dst,
 		      unsigned short	 port_src, unsigned short     port_dst,
 		      unsigned char create);
