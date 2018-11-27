@@ -1,5 +1,38 @@
-WrapSix
-=======
+WrapSix with TUN
+================
+
+This is a WrapSix fork which uses TUN device instead of sniffing raw socket. The
+benefit of this solution is to have cleaner setup without "hidden" IP address.
+Also the permonace coudl be better in some cases as only packets which should be
+translated are copied to the userspace. Though no measurements was performed.
+
+How it works
+------------
+
+When IPv6 packet with destination address from NAT64 network is received it is
+routed by operating system to tun device. WrapSix reads the packet from the tun
+device, translates it to IPv4 and write it back to tun adapter. Os then routes
+the packet to destionation network. It works the same on the way back.
+
+
+ IPv4 network
+     o
+     |
++---------------------------------+
+|    |     host OS    +---------+ |
+|    \                |         | |
+|     routing -- tun -| WrapSix | |
+|    /                | process | |
+|    |                +---------+ |
++---------------------------------+
+     |
+     o
+  IPv6 only network
+
+
+
+WrapSix (original README)
+=========================
 
 About
 -----
