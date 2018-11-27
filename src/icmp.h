@@ -51,30 +51,30 @@
 
 /* ICMP header structure */
 struct s_icmp {
-	unsigned char		type;           /*  8 b; ICMP type */
-	unsigned char		code;           /*  8 b; subtype of ICMP type */
-	unsigned short		checksum;       /* 16 b */
+	uint8_t     type;           /*  8 b; ICMP type */
+	uint8_t     code;           /*  8 b; subtype of ICMP type */
+	uint16_t    checksum;       /* 16 b */
 } __attribute__ ((__packed__));
 
 /* ICMP echo structure */
 struct s_icmp_echo {
-	unsigned short		id;		/* 16 b; ID value */
-	unsigned short		seq;		/* 16 b; sequence number */
+	uint16_t    id;		/* 16 b; ID value */
+	uint16_t    seq;		/* 16 b; sequence number */
 } __attribute__ ((__packed__));
 
 /* ICMP NDP NS structure */
 struct s_icmp_ndp_ns {
-	unsigned int		zeros;		/*  32 b; reserved section */
+	uint32_t    zeros;		/*  32 b; reserved section */
 	struct s_ipv6_addr	target;		/* 128 b; target IP address */
 } __attribute__ ((__packed__));
 
 /* ICMP NDP NA structure */
 struct s_icmp_ndp_na {
-	unsigned char		flags;		/*   8 b; 3 flags */
-	unsigned int		zeros:24;	/*  24 b; reserved section */
+	uint8_t     flags;		/*   8 b; 3 flags */
+	uint32_t    zeros:24;	/*  24 b; reserved section */
 	struct s_ipv6_addr	target;		/* 128 b; target IP address */
-	unsigned char		opt_type;	/*   8 b; option -- type */
-	unsigned char		opt_len;	/*   8 b; option -- length */
+	uint8_t     opt_type;	/*   8 b; option -- type */
+	uint8_t     opt_len;	/*   8 b; option -- length */
 	struct s_mac_addr	opt_tlla;	/*  48 b; option -- target
 							  link-layer address */
 } __attribute__ ((__packed__));

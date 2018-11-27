@@ -19,28 +19,30 @@
 #ifndef IPV4_H
 #define IPV4_H
 
+#include <stdint.h>
+
 /* IPv4 flags */
 #define IPV4_FLAG_DONT_FRAGMENT		0x4000
 #define IPV4_FLAG_MORE_FRAGMENTS	0x2000
 
 /* IPv4 address structure */
 struct s_ipv4_addr {
-	unsigned char		addr[4];
+	uint8_t addr[4];
 } __attribute__ ((__packed__));
 
 /* IPv4 header structure */
 struct s_ipv4 {
-	unsigned char		ver_hdrlen;	/*  4 b; version,
+	uint8_t     		ver_hdrlen;	/*  4 b; version,
 						    4 b; header length in 4 B */
-	unsigned char		tos;		/*  8 b; type of service */
-	unsigned short		len;		/* 16 b; total packet length */
-	unsigned short		id;		/* 16 b; id of the packet
-							 (for fragmentation) */
-	unsigned short		flags_offset;	/*  3 b; flags,
+	uint8_t         	tos;		/*  8 b; type of service */
+    uint16_t            len;		/* 16 b; total packet length */
+    uint16_t            id;		/* 16 b; id of the packet
+                                    (for fragmentation) */
+    uint16_t            flags_offset;	/*  3 b; flags,
 						   13 b; fragment offset in B */
-	unsigned char		ttl;		/*  8 b; time to live */
-	unsigned char		proto;		/*  8 b; protocol in payload */
-	unsigned short		checksum;	/* 16 b */
+	uint8_t             ttl;		/*  8 b; time to live */
+	uint8_t             proto;		/*  8 b; protocol in payload */
+	uint16_t            checksum;	/* 16 b */
 	struct s_ipv4_addr	ip_src;		/* 32 b; source address */
 	struct s_ipv4_addr	ip_dest;	/* 32 b; destination address */
 } __attribute__ ((__packed__));
@@ -49,16 +51,16 @@ struct s_ipv4 {
 struct s_ipv4_pseudo {
 	struct s_ipv4_addr	ip_src;		/* 32 b; source address */
 	struct s_ipv4_addr	ip_dest;	/* 32 b; destination address */
-	unsigned char		zeros;		/*  8 b */
-	unsigned char		proto;		/*  8 b; protocol in payload */
-	unsigned short		len;		/* 16 b; payload length */
+	uint8_t             zeros;		/*  8 b */
+	uint8_t         	proto;		/*  8 b; protocol in payload */
+	uint16_t    		len;		/* 16 b; payload length */
 } __attribute__ ((__packed__));
 
 /* IPv4 pseudoheader structure for checksum update */
 struct s_ipv4_pseudo_delta {
 	struct s_ipv4_addr	ip_src;		/* 32 b; source address */
 	struct s_ipv4_addr	ip_dest;	/* 32 b; destination address */
-	unsigned short		port;		/* 16 b; transport layer
+	uint16_t            port;		/* 16 b; transport layer
 							 address */
 } __attribute__ ((__packed__));
 

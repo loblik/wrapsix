@@ -23,29 +23,29 @@
 
 /* IPv6 address structure */
 struct s_ipv6_addr {
-	unsigned char		addr[16];
+	uint8_t addr[16];
 } __attribute__ ((__packed__));
 
 /* IPv6 header structure */
 struct s_ipv6 {
-	unsigned char		ver;		/*   4 b; version */
-	unsigned char		traffic_class;	/*   8 b; traffic class */
-	unsigned short		flow_label;	/*  20 b; flow label (QOS) */
-	unsigned short		len;		/*  16 b; payload length */
-	unsigned char		next_header;	/*   8 b; next header */
-	unsigned char		hop_limit;	/*   8 b; hop limit (aka TTL) */
+	uint8_t   ver;		/*   4 b; version */
+	uint8_t   traffic_class;	/*   8 b; traffic class */
+	uint16_t  flow_label;	/*  20 b; flow label (QOS) */
+	uint16_t  len;		/*  16 b; payload length */
+	uint8_t   next_header;	/*   8 b; next header */
+	uint8_t   hop_limit;	/*   8 b; hop limit (aka TTL) */
 	struct s_ipv6_addr	ip_src;		/* 128 b; source address */
 	struct s_ipv6_addr	ip_dest;	/* 128 b; destination address */
 } __attribute__ ((__packed__));
 
 /* IPv6 fragment header structure */
 struct s_ipv6_fragment {
-	unsigned char		next_header;	/*  8 b; next header */
-	unsigned char		zeros;		/*  8 b; reserved */
-	unsigned short		offset_flag;	/* 13 b; fragment offset in B,
+	uint8_t     next_header;	/*  8 b; next header */
+	uint8_t     zeros;		/*  8 b; reserved */
+	uint16_t    offset_flag;	/* 13 b; fragment offset in B,
 						    2 b; reserved,
 						    1 b; flag */
-	unsigned int		id;		/* 32 b; id of the packet
+	uint32_t    id;		/* 32 b; id of the packet
 							 (for fragmentation) */
 } __attribute__ ((__packed__));
 
@@ -53,16 +53,16 @@ struct s_ipv6_fragment {
 struct s_ipv6_pseudo {
 	struct s_ipv6_addr	ip_src;		/* 128 b; source address */
 	struct s_ipv6_addr	ip_dest;	/* 128 b; destination address */
-	unsigned int		len;		/*  32 b; payload length */
-	unsigned int		zeros:24;	/*  24 b; reserved */
-	unsigned char		next_header;	/*   8 b; next header */
+	uint32_t    len;		/*  32 b; payload length */
+	uint32_t    zeros:24;	/*  24 b; reserved */
+	uint8_t     next_header;	/*   8 b; next header */
 } __attribute__ ((__packed__));
 
 /* IPv6 pseudoheader structure for checksum update */
 struct s_ipv6_pseudo_delta {
 	struct s_ipv6_addr	ip_src;		/* 128 b; source address */
 	struct s_ipv6_addr	ip_dest;	/* 128 b; destination address */
-	unsigned short		port;		/*  16 b; transport layer
+	uint16_t    port;		/*  16 b; transport layer
 							  address */
 } __attribute__ ((__packed__));
 

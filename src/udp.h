@@ -21,10 +21,10 @@
 
 /* UDP header structure */
 struct s_udp {
-	unsigned short port_src;	/* 16 b; source port */
-	unsigned short port_dest;	/* 16 b; destination port */
-	unsigned short len;		/* 16 b; header + data length */
-	unsigned short checksum;	/* 16 b; optional checksum */
+	uint16_t    port_src;	/* 16 b; source port */
+	uint16_t    port_dest;	/* 16 b; destination port */
+	uint16_t    len;		/* 16 b; header + data length */
+	uint16_t    checksum;	/* 16 b; optional checksum */
 } __attribute__ ((__packed__));
 
 int udp_ipv4(struct s_ipv4 *ip4, char *payload,

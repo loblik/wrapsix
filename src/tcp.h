@@ -32,15 +32,15 @@
 
 /* TCP header structure */
 struct s_tcp {
-	unsigned short port_src;	/* 16 b; source port */
-	unsigned short port_dest;	/* 16 b; destination port */
-	unsigned int   seq;		/* 32 b; sequence number */
-	unsigned int   ack;		/* 32 b; acknowledgement number */
-	unsigned char  offset;		/*  4 b; data offset
+	uint16_t    port_src;	/* 16 b; source port */
+	uint16_t    port_dest;	/* 16 b; destination port */
+	uint32_t    seq;		/* 32 b; sequence number */
+	uint32_t    ack;		/* 32 b; acknowledgement number */
+	uint8_t     offset;		/*  4 b; data offset
 					    6 b; reserved (zeros) */
-	unsigned char  flags;		/*  6 b; flags */
-	unsigned short window;		/* 16 b; size of the receive window */
-	unsigned short checksum;	/* 16 b */
+	uint8_t     flags;		/*  6 b; flags */
+	uint16_t    window;		/* 16 b; size of the receive window */
+	uint16_t    checksum;	/* 16 b */
 } __attribute__ ((__packed__));
 
 int tcp_ipv4(struct s_ipv4 *ip4, char *payload,
