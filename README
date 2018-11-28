@@ -1,34 +1,35 @@
 WrapSix with TUN
 ================
 
-This is a WrapSix fork which uses TUN device instead of sniffing raw socket. The
-benefit of approach is cleaner solution without "hidden" IP address and simpler
-implementation (no ARP handling etc.).
-Also the permonace could be better in some cases as only packets which should be
-translated are copied to the userspace. Though no measurements was performed.
+This is a WrapSix fork which uses TUN device instead of sniffing raw socket.
+The benefit of this approach is cleaner solution without "hidden" IP address
+and simpler implementation (no ARP handling etc.).
+Also permonace should be better in some cases as only packets which are
+translated are copied to the userspace. Though no measurement was performed
+so far.
 
 How it works
 ------------
 
-When IPv6 packet with destination address from NAT64 network is received it is
-routed by operating system to the tun device. WrapSix reads the packet from the
-device, translates it to IPv4 and writes the result it back to the tun adapter.
-Operating system then routes the packet to destionation network. The way back
-works exactly the same.
+When IPv6 packet with destination address from NAT64 network is received it
+is routed by operating system to the tun device. WrapSix reads the packet,
+translates it to IPv4 packet and writes the result back to the tun adapter.
+Operating system then routes the packet to destionation network. The way
+back works exactly the same.
 
 
  IPv4 network
-     o
-     |
-+---------------------------------+
-|    |     host OS    +---------+ |
-|    \                |         | |
-|     routing -- tun -| WrapSix | |
-|    /                | process | |
-|    |                +---------+ |
-+---------------------------------+
-     |
-     o
+   |
+/————————————————————————————————\
+|  o         host OS             |
+|  |                 +—————————+ |
+|   \                |         | |
+|   routing —— o(tun)| WrapSix | |
+|   /                | process | |
+|  |                 +—————————+ |
+|  o                             |
+\————————————————————————————————/
+   |
   IPv6 only network
 
 
