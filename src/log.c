@@ -22,16 +22,24 @@
 
 #include "log.h"
 
+static enum log_level level;
+
+void log_set_level(enum log_level l)
+{
+    level = l;
+}
+
 /**
  * Logs debugging stuff to stdout, but only when compiled with debug enabled.
  *
  * @param	msg	Formatted message
  * @param	...	Parameters to be included in the message
  */
-#define DEBUG
-void log_debug(const char *msg, ...)
+inline void log_debug(const char *msg, ...)
 {
-#ifdef DEBUG
+    if (level < LOG_DEBUG)
+        return;
+
 	va_list args;
 
 	fprintf(stdout, "[Debug %08ld] ", clock());
@@ -41,7 +49,6 @@ void log_debug(const char *msg, ...)
 	va_end(args);
 
 	fprintf(stdout, "\n");
-#endif /* DEBUG */
 }
 
 /**
@@ -50,8 +57,11 @@ void log_debug(const char *msg, ...)
  * @param	msg	Formatted message
  * @param	...	Parameters to be included in the message
  */
-void log_info(const char *msg, ...)
+inline void log_info(const char *msg, ...)
 {
+    if (level < LOG_INFO)
+        return;
+
 	va_list args;
 
 	fprintf(stdout, "[Info] ");
@@ -69,8 +79,11 @@ void log_info(const char *msg, ...)
  * @param	msg	Formatted message
  * @param	...	Parameters to be included in the message
  */
-void log_warn(const char *msg, ...)
+inline void log_warn(const char *msg, ...)
 {
+    if (level < LOG_WARN)
+        return;
+
 	va_list args;
 
 	fprintf(stderr, "[Warning] ");
@@ -88,7 +101,7 @@ void log_warn(const char *msg, ...)
  * @param	msg	Formatted message
  * @param	...	Parameters to be included in the message
  */
-void log_error(const char *msg, ...)
+inline void log_error(const char *msg, ...)
 {
 	va_list args;
 

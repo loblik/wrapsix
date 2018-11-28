@@ -79,6 +79,7 @@ int cfg_parse(const char *config_file, unsigned short *cmtu,
 	cfg_guess_interface(oto->interface);
 	strncpy(oto->prefix, C_DEFAULT_PREFIX, sizeof(oto->prefix));
 	oto->ipv4_address[0] = '\0';
+    oto->level = LOG_WARN;
 
 	f = fopen(config_file, "r");
 
@@ -202,6 +203,18 @@ int cfg_parse(const char *config_file, unsigned short *cmtu,
 				SYNTAX_ERROR(config_file, ln, opt_len + wht_len,
 					     init);
 			}
+        } else if (!strcmp(tmp_opt, "log_level")) {
+            oto->level = 0;
+            for (int i = 0; i < 4; i++) {
+                char *levels[] = { "error", "warn", "info", "debug" };
+                if (strcmp(tmp_val, levels[i]) == 0) {
+                    oto->level = i + 1;
+                }
+            }
+            if (oto->level == 0) {
+			    log_error("unknown log level value");
+			    SYNTAX_ERROR(config_file, ln, 0, init);
+            }
 		} else {
 			log_error("Unknown configuration option");
 			SYNTAX_ERROR(config_file, ln, 0, init);

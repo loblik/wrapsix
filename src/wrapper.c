@@ -51,12 +51,10 @@
 unsigned short mtu;
 
 struct ifreq		interface;
-struct s_mac_addr	mac;
 struct s_ipv6_addr	ndp_multicast_addr;
 struct s_ipv6_addr	wrapsix_ipv6_prefix;
 struct s_ipv4_addr	wrapsix_ipv4_addr;
 struct s_ipv6_addr	wrapsix_ipv6_addr;
-int tun_fd;
 
 static int process(char *packet, unsigned short length);
 
@@ -82,6 +80,8 @@ int main(int argc, char **argv)
 		cfg_parse(argv[1], &mtu, &cfg, 1);
 	}
 
+    log_set_level(cfg.level);
+
 	log_info("Using: interface %s", cfg.interface);
 	log_info("       NAT64 prefix %s", cfg.prefix);
 	log_info("       MTU %d", mtu);
@@ -92,7 +92,6 @@ int main(int argc, char **argv)
 	/* using block because of the temporary variable */
 	{
 		char ip_text[40];
-
 
 		inet_ntop(AF_INET, &wrapsix_ipv4_addr, ip_text, sizeof(ip_text));
 		log_info("       IPv4 address %s", ip_text);
@@ -158,9 +157,6 @@ int main(int argc, char **argv)
 
 	/* empty NAT tables */
 	nat_quit();
-
-	/* close TUN */
-	close(tun_fd);
 
 	return 0;
 }

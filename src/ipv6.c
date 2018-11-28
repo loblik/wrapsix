@@ -18,6 +18,7 @@
 
 #include <netinet/in.h>		/* IPPROTO_* */
 #include <string.h>		/* memcmp */
+#include <stdio.h>
 
 #include "icmp.h"
 #include "ipv6.h"
@@ -57,7 +58,26 @@ int ipv6(char *packet, unsigned short length)
 	/* test if this packet belongs to us */
 	if (memcmp(&wrapsix_ipv6_prefix, &ip->ip_dest, 12) != 0 &&
 	    memcmp(&ndp_multicast_addr,  &ip->ip_dest, 13) != 0) {
-		log_debug("PACKET NOT FOR US?");
+        char proto_msg[64];
+        int next_header = ip->next_header;
+        if (ip->next_header == IPPROTO_HOPOPTS)
+        {
+            int options_size = *(payload + 1);
+            next_header = *(payload);
+            payload = payload + options_size + 8;
+        }
+        switch (next_header) {
+            case IPPROTO_ICMPV6:
+                {
+	                struct s_icmp *icmp = (struct s_icmp*)payload;
+                    sprintf(proto_msg, "proto: ICMPv6, type: %d", icmp->type);
+                }
+                break;
+            default:
+                sprintf(proto_msg, "proto: unknown %d", ip->next_header);
+                break;
+        }
+        log_warn("dropping IPv6 (%s): %s > %s", proto_msg, from, to);
         return 1;
 	}
 

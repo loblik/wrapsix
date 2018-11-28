@@ -19,6 +19,11 @@
 #ifndef LOG_H
 #define LOG_H
 
+
+enum log_level { LOG_ERROR = 1, LOG_WARN = 2, LOG_INFO = 3, LOG_DEBUG = 4 };
+
+void log_set_level(enum log_level level);
+
 void log_debug(const char *msg, ...);
 void log_info(const char *msg, ...);
 void log_warn(const char *msg, ...);

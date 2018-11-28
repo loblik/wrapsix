@@ -75,8 +75,6 @@ struct s_icmp_ndp_na {
 	struct s_ipv6_addr	target;		/* 128 b; target IP address */
 	uint8_t     opt_type;	/*   8 b; option -- type */
 	uint8_t     opt_len;	/*   8 b; option -- length */
-	struct s_mac_addr	opt_tlla;	/*  48 b; option -- target
-							  link-layer address */
 } __attribute__ ((__packed__));
 
 int icmp_ipv4(struct s_ipv4 *ip4, char *payload,

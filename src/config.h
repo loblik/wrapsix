@@ -19,17 +19,19 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include "ipv4.h"
-#include "ipv6.h"
-
 #include <arpa/inet.h>
 #include <linux/if.h>
+
+#include "ipv4.h"
+#include "ipv6.h"
+#include "log.h"
 
 struct s_cfg_opts {
 	char interface[IFNAMSIZ];
 	char prefix[INET6_ADDRSTRLEN];
 	char ipv4_address[INET_ADDRSTRLEN];
     char ipv6_address[INET6_ADDRSTRLEN];
+    enum log_level level;
 };
 
 int cfg_parse(const char *config_file, unsigned short *cmtu,
